@@ -1,65 +1,56 @@
-import Image from "next/image";
+import { headers } from "next/headers";
 
-export default function Home() {
+import type { DashboardData } from "@/types/dashboard";
+import { HeroSection } from "@/components/HeroSection";
+import { StatsStrip } from "@/components/StatsStrip";
+import { MethodologySection } from "@/components/MethodologySection";
+import { HomepageCTAs } from "@/components/HomepageCTAs";
+import { SiteFooter } from "@/components/SiteFooter";
+
+// The page reads request headers and pulls live, daily-changing data, so it
+// must render per request rather than be statically prerendered.
+export const dynamic = "force-dynamic";
+
+async function getDashboardData(): Promise<DashboardData | null> {
+  // fetch() in a Server Component needs an absolute URL. The /api/dashboard
+  // route lives on this same server, so we rebuild the origin from the
+  // incoming request headers — no NEXT_PUBLIC_BASE_URL env var required.
+  const headerList = await headers();
+  const host = headerList.get("host");
+  if (!host) return null;
+  const protocol = headerList.get("x-forwarded-proto") ?? "http";
+
+  try {
+    const res = await fetch(`${protocol}://${host}/api/dashboard`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return null;
+    return (await res.json()) as DashboardData;
+  } catch {
+    // Network/DB hiccup: render the page with placeholders rather than crash.
+    return null;
+  }
+}
+
+export default async function Home() {
+  const data = await getDashboardData();
+  // Captured once on the server so the hero counter's first paint matches
+  // between SSR and hydration.
+  const now = Date.now();
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <>
+      <main>
+        <HeroSection pothole={data?.oldest_open_pothole ?? null} now={now} />
+        <StatsStrip
+          citySummary={data?.city_summary ?? null}
+          slaBreach={data?.sla_breach_count ?? null}
+          updatedAt={data?.updated_at ?? null}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+        <MethodologySection />
+        <HomepageCTAs />
       </main>
-    </div>
+      <SiteFooter />
+    </>
   );
 }

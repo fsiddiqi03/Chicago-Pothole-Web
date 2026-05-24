@@ -7,9 +7,22 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  /* Layout sets --font-geist-sans / --font-geist-mono on <html>; map the
+     Tailwind font tokens to them (the scaffold left --font-sans self-referential). */
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  /* Newsreader carries the editorial voice (headlines, datelines, captions);
+     it's self-hosted by next/font, so no runtime font request. */
+  --font-display: var(--font-newsreader);
+  --font-heading: var(--font-newsreader);
+
+  /* Chicago civic palette — used sparingly for accountability accents. */
+  --color-chicago-red: #c8102e;
+  --color-chicago-blue: #41b6e6;
+  --color-chicago-blue-tint: #b3ddf2;
+  /* Off-white paper ground and ink, a hair warmer than pure white/black. */
+  --color-paper: #fafaf7;
+  --color-ink: #0a0a0a;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -126,5 +139,69 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* ---- Editorial atmosphere & motion ---------------------------------- */
+
+/* Fine print grain over the whole surface — the texture of newsprint.
+   Fixed, non-interactive, and barely there so it reads as paper not noise. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Editorial section kicker: numeral + label separated by a hairline. */
+.kicker-rule::after {
+  content: "";
+  display: block;
+  height: 1px;
+  flex: 1 1 auto;
+  background: currentColor;
+  opacity: 0.25;
+}
+
+/* Orchestrated load: staggered fade-up. Inner hero elements carry their own
+   animation-delay; the outer hero opacity is driven separately by scroll. */
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.reveal {
+  animation: reveal-up 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Hairline that draws itself in on load — used under section numerals. */
+@keyframes draw-rule {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.draw-rule {
+  transform-origin: left;
+  animation: draw-rule 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal,
+  .draw-rule,
+  .animate-bounce {
+    animation: none !important;
   }
 }
