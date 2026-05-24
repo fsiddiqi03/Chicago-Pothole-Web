@@ -83,7 +83,15 @@ export function titleCase(value: string): string {
     .join(' ');
 }
 
-/** Plain-English duration for the counter's aria-label. */
-export function describeElapsed(e: Elapsed): string {
-  return `This pothole has been open for ${e.days} days, ${e.hours} hours, ${e.minutes} minutes`;
+/**
+ * Plain-English "time since last report" for the hero timer's aria-label.
+ * Reports come in many times a day, so we never speak days — they roll into
+ * hours. Minute-granular; seconds are omitted so assistive tech isn't churning.
+ */
+export function describeSinceReport(e: Elapsed): string {
+  const hours = e.days * 24 + e.hours;
+  const parts: string[] = [];
+  if (hours) parts.push(`${hours} hour${hours === 1 ? '' : 's'}`);
+  parts.push(`${e.minutes} minute${e.minutes === 1 ? '' : 's'}`);
+  return `Most recent pothole reported ${parts.join(', ')} ago`;
 }

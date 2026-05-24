@@ -3,17 +3,20 @@
 import { useEffect, useState } from "react";
 import { ChevronDown } from "lucide-react";
 
-import type { OldestOpenPothole } from "@/types/dashboard";
-import { formatReportDate, titleCase } from "@/lib/format";
-import { OldestPotholeCounter } from "@/components/OldestPotholeCounter";
+import type { OpenPotholeRecord } from "@/types/dashboard";
+import { formatInt, formatReportDate, titleCase } from "@/lib/format";
+import { LastReportedTimer } from "@/components/LastReportedTimer";
 
 interface HeroSectionProps {
-  pothole: OldestOpenPothole | null;
-  /** Server-captured epoch ms, threaded down to the counter. */
+  /** Count of potholes open across the city right now — the hero figure. */
+  openCount: number | null;
+  /** Most recently reported open pothole, for the live "last reported" line. */
+  latestReport: OpenPotholeRecord | null;
+  /** Server-captured epoch ms, threaded down to the timer. */
   now: number;
 }
 
-export function HeroSection({ pothole, now }: HeroSectionProps) {
+export function HeroSection({ openCount, latestReport, now }: HeroSectionProps) {
   const [opacity, setOpacity] = useState(1);
 
   // Fade the whole hero out as it scrolls away: fully visible at the top,
@@ -37,6 +40,8 @@ export function HeroSection({ pothole, now }: HeroSectionProps) {
     };
   }, []);
 
+  const hasCount = openCount != null;
+
   return (
     <section
       style={{ opacity, willChange: "opacity" }}
@@ -49,14 +54,27 @@ export function HeroSection({ pothole, now }: HeroSectionProps) {
         >
           <span className="hidden h-px w-10 bg-neutral-300 sm:block" />
           <p className="text-[0.7rem] font-medium tracking-[0.2em] text-neutral-500 uppercase sm:text-xs">
-            As of now, Chicago&apos;s oldest open pothole has been waiting
+            As of now, the city of Chicago has
           </p>
           <span className="hidden h-px w-10 bg-neutral-300 sm:block" />
         </div>
 
         <div className="reveal mt-10" style={{ animationDelay: "180ms" }}>
-          {pothole ? (
-            <OldestPotholeCounter createdAt={pothole.created_at} now={now} />
+          {hasCount ? (
+            <div className="flex flex-col items-center">
+              {/* Sole <h1> on the page. Fluid size: fills small screens, caps
+                  on desktop, and the vw term keeps even a 6-digit count inside
+                  the viewport without wrapping. */}
+              <h1
+                style={{ fontSize: "clamp(5rem, 27vw, 11rem)" }}
+                className="font-mono leading-[0.82] font-black tracking-tighter whitespace-nowrap text-chicago-red tabular-nums"
+              >
+                {formatInt(openCount)}
+              </h1>
+              <p className="mt-10 text-xs font-semibold tracking-[0.4em] text-neutral-500 uppercase">
+                Open potholes
+              </p>
+            </div>
           ) : (
             <div className="flex flex-col items-center">
               <p className="font-mono text-8xl leading-none font-black text-chicago-red sm:text-9xl">
@@ -69,14 +87,26 @@ export function HeroSection({ pothole, now }: HeroSectionProps) {
           )}
         </div>
 
-        {pothole && (
-          <div className="reveal mt-12" style={{ animationDelay: "380ms" }}>
-            <p className="font-display text-2xl italic text-ink sm:text-3xl">
-              {titleCase(pothole.street_address)}
+        {latestReport && (
+          <div className="reveal mt-14" style={{ animationDelay: "380ms" }}>
+            <div className="flex items-center justify-center gap-3">
+              <span className="h-px w-8 bg-neutral-300" />
+              <p className="font-mono text-[0.7rem] tracking-[0.2em] text-neutral-500 uppercase">
+                Last reported
+              </p>
+              <span className="h-px w-8 bg-neutral-300" />
+            </div>
+
+            <div className="mt-5">
+              <LastReportedTimer createdAt={latestReport.created_at} now={now} />
+            </div>
+
+            <p className="mt-8 font-display text-2xl italic text-ink sm:text-3xl">
+              {titleCase(latestReport.street_address)}
             </p>
             <p className="mt-3 font-mono text-[0.7rem] tracking-[0.15em] text-neutral-500 uppercase">
-              Ward {pothole.ward_id} &nbsp;&middot;&nbsp; Reported{" "}
-              {formatReportDate(pothole.created_at)}
+              Ward {latestReport.ward_id} &nbsp;&middot;&nbsp; Reported{" "}
+              {formatReportDate(latestReport.created_at)}
             </p>
           </div>
         )}

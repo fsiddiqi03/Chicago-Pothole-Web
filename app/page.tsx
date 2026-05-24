@@ -41,11 +41,17 @@ export default async function Home() {
   return (
     <>
       <main>
-        <HeroSection pothole={data?.oldest_open_pothole ?? null} now={now} />
+        <HeroSection
+          openCount={data?.city_summary?.total_open ?? null}
+          latestReport={data?.latest_open_report ?? null}
+          now={now}
+        />
         <StatsStrip
           citySummary={data?.city_summary ?? null}
           slaBreach={data?.sla_breach_count ?? null}
           updatedAt={data?.updated_at ?? null}
+          oldestPothole={data?.oldest_open_pothole ?? null}
+          now={now}
         />
         <MethodologySection />
         <HomepageCTAs />

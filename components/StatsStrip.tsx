@@ -1,19 +1,40 @@
-import type { CitySummary, SlaBreachCount } from "@/types/dashboard";
-import { formatInt, formatDecimal, formatRefreshedAt } from "@/lib/format";
+import type {
+  CitySummary,
+  SlaBreachCount,
+  OpenPotholeRecord,
+} from "@/types/dashboard";
+import {
+  formatInt,
+  formatDecimal,
+  formatRefreshedAt,
+  elapsedBetween,
+} from "@/lib/format";
 import { StatCard } from "@/components/StatCard";
 import { SectionHeading } from "@/components/SectionHeading";
 
 interface StatsStripProps {
   citySummary: CitySummary | null;
+  oldestPothole: OpenPotholeRecord | null;
   slaBreach: SlaBreachCount | null;
   updatedAt: string | null;
+  /** Server-captured epoch ms, so the oldest-report age uses the same clock as the hero. */
+  now: number;
 }
 
 export function StatsStrip({
   citySummary,
+  oldestPothole,
   slaBreach,
   updatedAt,
+  now,
 }: StatsStripProps) {
+  // Whole days the city's oldest open report has been waiting. This is a daily
+  // snapshot ("as of" the refresh below), so it doesn't tick — the hero owns
+  // the live clock.
+  const oldestDaysWaiting = oldestPothole
+    ? elapsedBetween(new Date(oldestPothole.created_at).getTime(), now).days
+    : null;
+
   return (
     <section className="px-6 py-24">
       <div className="mx-auto max-w-6xl">
@@ -24,8 +45,8 @@ export function StatsStrip({
         </h2>
         <div className="grid grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
-            value={formatInt(citySummary?.total_open)}
-            label="Open reports right now"
+            value={formatInt(oldestDaysWaiting)}
+            label="Days the oldest open report has waited"
           />
           <StatCard
             value={formatInt(slaBreach?.count)}

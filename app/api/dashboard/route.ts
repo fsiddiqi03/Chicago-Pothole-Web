@@ -5,7 +5,7 @@
  *   - oldest open pothole (the hero counter)
  *   - SLA breach count
  *   - city summary stats
- *   - top 10 worst wards by SLA breach %
+ *   - top 10 worst wards by median days-to-fix (last 30d)
  *
  * All data comes from pre-computed cache tables (dashboard_cache and
  * ward_daily_stats), so this is cheap to call frequently.
@@ -36,7 +36,7 @@ export async function GET() {
     const cacheRows = await query<CacheRow>(
       `select key, value, updated_at
          from dashboard_cache
-        where key in ('oldest_open_pothole', 'sla_breach_count', 'city_summary')`,
+        where key in ('oldest_open_pothole', 'latest_open_report', 'sla_breach_count', 'city_summary')`,
     );
 
     const cache: Record<string, { value: unknown; updated_at: string }> = {};
@@ -56,12 +56,14 @@ export async function GET() {
          from ward_daily_stats wds
          join wards w on w.id = wds.ward_id
         where wds.date = (select max(date) from ward_daily_stats)
-        order by wds.pct_over_sla desc nulls last
+          and wds.median_days_to_fix is not null
+        order by wds.median_days_to_fix desc nulls last
         limit 10`,
     );
 
     return NextResponse.json({
       oldest_open_pothole: cache.oldest_open_pothole?.value ?? null,
+      latest_open_report: cache.latest_open_report?.value ?? null,
       sla_breach_count: cache.sla_breach_count?.value ?? null,
       city_summary: cache.city_summary?.value ?? null,
       leaderboard,

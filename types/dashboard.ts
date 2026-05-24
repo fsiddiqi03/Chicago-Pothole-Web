@@ -1,7 +1,9 @@
 // Shape of GET /api/dashboard. Any field can be null when the daily stats
 // refresh hasn't populated its cache row yet, so consumers must null-check.
 
-export interface OldestOpenPothole {
+// A single open pothole report. Used for both the oldest open report and the
+// most recently reported one — same row shape, different selection criteria.
+export interface OpenPotholeRecord {
   id: string;
   source_id: string;
   /** ISO 8601 timestamp, e.g. "2025-01-04T08:53:11+00:00". */
@@ -34,7 +36,9 @@ export interface LeaderboardEntry {
 }
 
 export interface DashboardData {
-  oldest_open_pothole: OldestOpenPothole | null;
+  oldest_open_pothole: OpenPotholeRecord | null;
+  /** Most recently created open report — drives the hero's live "last reported" timer. */
+  latest_open_report: OpenPotholeRecord | null;
   sla_breach_count: SlaBreachCount | null;
   city_summary: CitySummary | null;
   leaderboard: LeaderboardEntry[];
