@@ -85,13 +85,13 @@ export function titleCase(value: string): string {
 
 /**
  * Plain-English "time since last report" for the hero timer's aria-label.
- * Reports come in many times a day, so we never speak days — they roll into
- * hours. Minute-granular; seconds are omitted so assistive tech isn't churning.
+ * Days are spoken only when present; under 24 hours the day unit is dropped.
+ * Minute-granular; seconds are omitted so assistive tech isn't churning.
  */
 export function describeSinceReport(e: Elapsed): string {
-  const hours = e.days * 24 + e.hours;
   const parts: string[] = [];
-  if (hours) parts.push(`${hours} hour${hours === 1 ? '' : 's'}`);
+  if (e.days) parts.push(`${e.days} day${e.days === 1 ? '' : 's'}`);
+  if (e.hours) parts.push(`${e.hours} hour${e.hours === 1 ? '' : 's'}`);
   parts.push(`${e.minutes} minute${e.minutes === 1 ? '' : 's'}`);
   return `Most recent pothole reported ${parts.join(', ')} ago`;
 }

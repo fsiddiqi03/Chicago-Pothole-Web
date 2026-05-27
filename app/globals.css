@@ -198,9 +198,24 @@ body::after {
   animation: draw-rule 1s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+/* Indeterminate progress bar for the map's data fetches. */
+@keyframes map-loadbar {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(500%);
+  }
+}
+
+.map-loadbar {
+  animation: map-loadbar 1.05s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal,
   .draw-rule,
+  .map-loadbar,
   .animate-bounce {
     animation: none !important;
   }

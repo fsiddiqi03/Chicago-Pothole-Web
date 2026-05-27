@@ -13,9 +13,9 @@ interface LastReportedTimerProps {
 }
 
 /**
- * Live "how long ago" timer for the most recent report. Chicago logs new
- * potholes many times a day, so days are folded into hours — the value reads
- * as hours / minutes / seconds and never rolls over to a day count.
+ * Live "how long ago" timer for the most recent report. Reads as
+ * days / hours / minutes / seconds; the day segment is dropped entirely when
+ * the gap is under 24 hours so it doesn't show a redundant "0d".
  */
 export function LastReportedTimer({ createdAt, now }: LastReportedTimerProps) {
   const createdMs = new Date(createdAt).getTime();
@@ -61,17 +61,19 @@ export function LastReportedTimer({ createdAt, now }: LastReportedTimerProps) {
     };
   }, [createdMs]);
 
-  // Reports arrive daily; fold any days into the hour figure so the display
-  // stays h / m / s as intended.
-  const hours = elapsed.days * 24 + elapsed.hours;
-
   return (
     <p
       role="timer"
       aria-label={label}
       className="font-mono text-2xl tracking-wide tabular-nums sm:text-3xl"
     >
-      <span className="text-chicago-red">{hours}</span>
+      {elapsed.days > 0 && (
+        <>
+          <span className="text-chicago-red">{elapsed.days}</span>
+          <span className="text-neutral-400">d</span>{" "}
+        </>
+      )}
+      <span className="text-chicago-red">{pad2(elapsed.hours)}</span>
       <span className="text-neutral-400">h</span>{" "}
       <span className="text-chicago-red">{pad2(elapsed.minutes)}</span>
       <span className="text-neutral-400">m</span>{" "}
