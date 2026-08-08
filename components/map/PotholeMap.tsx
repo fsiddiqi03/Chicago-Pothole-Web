@@ -5,7 +5,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type * as MB from "mapbox-gl";
-import { ChevronDown, Crosshair, MapPin, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, Crosshair, MapPin } from "lucide-react";
 
 import type {
   MapStatusFilter,
@@ -23,23 +23,18 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { MapFilters, type WardOption } from "@/components/map/MapFilters";
+import { describeView, STATUS_COLORS } from "@/lib/map-copy";
+import type { WardOption } from "@/components/map/MapFilters";
+import { MapPanelBody } from "@/components/map/MapPanel";
 import { PotholeDetailPanel } from "@/components/map/PotholeDetailPanel";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const CHICAGO_CENTER: [number, number] = [-87.6298, 41.8781];
 const CHICAGO_ZOOM = 10.5;
-const MOBILE_QUERY = "(max-width: 767px)";
 const EMPTY_FC: GeoJSON.FeatureCollection = {
   type: "FeatureCollection",
   features: [],
 };
-
-// Colors echo the rest of the site; amber/green are map-only status hues.
-const RED = "#c8102e";
-const AMBER = "#f59e0b";
-const GREEN = "#10b981";
-const GRAY = "#9ca3af";
 
 const OVERLAY_CARD =
   "rounded-lg border border-neutral-300/80 bg-paper/95 shadow-[0_2px_12px_rgba(0,0,0,0.07)] backdrop-blur-sm";
@@ -91,23 +86,6 @@ function bboxOf(
   return [w, s, e, n];
 }
 
-function legendEntries(status: MapStatusFilter): { color: string; label: string }[] {
-  const past = { color: RED, label: "Past 7-day target" };
-  const within = { color: AMBER, label: "Open, within 7 days" };
-  const done = { color: GREEN, label: "Completed" };
-  const canceled = { color: GRAY, label: "Canceled" };
-  switch (status) {
-    case "open":
-      return [past, within];
-    case "completed":
-      return [done];
-    case "canceled":
-      return [canceled];
-    default:
-      return [past, within, done, canceled];
-  }
-}
-
 export function PotholeMap() {
   const router = useRouter();
   const pathname = usePathname();
@@ -148,9 +126,9 @@ export function PotholeMap() {
   const [retryNonce, setRetryNonce] = useState(0);
   const [features, setFeatures] = useState<PotholeFeature[]>([]);
   const [wardOptions, setWardOptions] = useState<WardOption[]>([]);
-  // null = follow the CSS breakpoint default; boolean = explicit user choice.
-  const [introOpen, setIntroOpen] = useState<boolean | null>(null);
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  // Desktop: the overlay card expands in place. Mobile: it opens as a sheet.
+  const [panelOpen, setPanelOpen] = useState(true);
+  const [mobilePanelOpen, setMobilePanelOpen] = useState(false);
 
   // The ward filter is applied client-side so changing it never refetches.
   const shown = useMemo(
@@ -276,7 +254,7 @@ export function PotholeMap() {
             type: "line",
             source: "wards",
             filter: ["==", ["get", "id"], -1],
-            paint: { "line-color": RED, "line-width": 3 },
+            paint: { "line-color": STATUS_COLORS.overdue, "line-width": 3 },
           } as unknown as MB.LayerSpecification);
 
           map.addLayer({
@@ -285,7 +263,7 @@ export function PotholeMap() {
             source: "potholes",
             filter: ["has", "point_count"],
             paint: {
-              "circle-color": RED,
+              "circle-color": STATUS_COLORS.overdue,
               "circle-opacity": 0.9,
               "circle-stroke-color": "#fafaf7",
               "circle-stroke-width": 1.5,
@@ -318,12 +296,12 @@ export function PotholeMap() {
               "circle-color": [
                 "case",
                 ["==", ["get", "over_sla"], true],
-                RED,
+                STATUS_COLORS.overdue,
                 ["in", ["get", "status"], ["literal", ["open", "dup_open"]]],
-                AMBER,
+                STATUS_COLORS.open,
                 ["in", ["get", "status"], ["literal", ["completed", "dup_closed"]]],
-                GREEN,
-                GRAY,
+                STATUS_COLORS.completed,
+                STATUS_COLORS.canceled,
               ],
             },
           } as unknown as MB.LayerSpecification);
@@ -496,14 +474,33 @@ export function PotholeMap() {
     ? wardOptions.find((w) => w.id === selected.ward_id)?.alderman ?? null
     : null;
 
-  const isEmpty = !loading && !error && visibleCount === 0;
+  // Headline, blurb, legend, and dateline all follow the active filters.
+  const activeAlderman =
+    ward == null ? null : wardOptions.find((w) => w.id === ward)?.alderman ?? null;
+  const view = describeView(status, ward, activeAlderman);
+  const countLabel =
+    loading || error ? "—" : visibleCount.toLocaleString("en-US");
 
-  // Toggling from the CSS-managed default: read the breakpoint in the handler
-  // (allowed outside render) and flip to an explicit choice.
-  const toggleIntro = () =>
-    setIntroOpen((prev) =>
-      prev === null ? window.matchMedia(MOBILE_QUERY).matches : !prev,
-    );
+  /** Place, status, and count — the whole map state in one line. */
+  const dateline = (
+    <span className="min-w-0 truncate font-mono text-[0.65rem] tracking-[0.22em] uppercase">
+      <span className="text-chicago-red/90">{view.dateline}</span>
+      <span className="text-neutral-400"> · </span>
+      <span className="font-semibold text-ink">{countLabel}</span>
+    </span>
+  );
+
+  /** Clear every filter and return the camera to the whole city. */
+  const resetMap = () => {
+    setParams({ status: null, ward: null, pothole: null });
+    mapRef.current?.easeTo({
+      center: CHICAGO_CENTER,
+      zoom: CHICAGO_ZOOM,
+      bearing: 0,
+      pitch: 0,
+      duration: 700,
+    });
+  };
 
   if (!TOKEN) {
     return (
@@ -521,11 +518,15 @@ export function PotholeMap() {
     );
   }
 
-  const filters = (
-    <MapFilters
+  const panel = (
+    <MapPanelBody
       wards={wardOptions}
       status={status}
       ward={ward}
+      alderman={activeAlderman}
+      visibleCount={visibleCount}
+      loading={loading}
+      error={error}
       onStatusChange={(s) =>
         setParams({ status: s === "open" ? null : s, pothole: null })
       }
@@ -541,6 +542,12 @@ export function PotholeMap() {
           container fills the parent regardless of which `position` value wins. */}
       <div ref={containerRef} className="h-full w-full" />
 
+      {/* The page heading tracks the filters and survives collapsing the panel,
+          so the document always has one and it always matches the map. */}
+      <h1 className="sr-only">
+        {view.headline} — {view.kicker}
+      </h1>
+
       {/* Indeterminate loading bar */}
       <div
         aria-hidden
@@ -552,119 +559,68 @@ export function PotholeMap() {
         <div className="map-loadbar h-full w-1/4 bg-chicago-red" />
       </div>
 
-      {/* Intro overlay — top-left */}
+      {/* Panel — desktop, top-left. Collapsed it still states what's on the
+          map; expanded it carries the masthead, the filters, and the key. */}
       <div
         className={cn(
           OVERLAY_CARD,
-          "absolute top-4 left-4 z-20 w-[min(360px,calc(100%-9.5rem))] overflow-hidden",
+          "absolute top-4 left-4 z-20 hidden w-[22rem] overflow-hidden md:block",
         )}
       >
         <button
           type="button"
-          onClick={toggleIntro}
-          aria-expanded={introOpen === null ? undefined : introOpen}
-          className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left focus-visible:ring-2 focus-visible:ring-chicago-blue focus-visible:outline-none"
+          onClick={() => setPanelOpen((prev) => !prev)}
+          aria-expanded={panelOpen}
+          className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left focus-visible:ring-2 focus-visible:ring-chicago-blue focus-visible:ring-inset focus-visible:outline-none"
         >
-          <span className="font-mono text-[0.65rem] tracking-[0.22em] text-chicago-red/90 uppercase">
-            Every open pothole
-          </span>
+          {panelOpen ? (
+            <span className="font-mono text-[0.65rem] tracking-[0.22em] text-chicago-red/90 uppercase">
+              {view.kicker}
+            </span>
+          ) : (
+            dateline
+          )}
           <ChevronDown
+            aria-hidden
             className={cn(
               "size-4 shrink-0 text-neutral-400 transition-transform",
-              introOpen === null
-                ? "rotate-0 md:rotate-180"
-                : introOpen && "rotate-180",
+              panelOpen && "rotate-180",
             )}
           />
         </button>
-        <div
-          className={cn(
-            "px-5 pb-5",
-            introOpen === null ? "hidden md:block" : introOpen ? "block" : "hidden",
-          )}
-        >
-          <h1 className="font-display text-3xl leading-[1.05] tracking-tight text-ink">
-            Chicago&apos;s open potholes
-          </h1>
-          <p className="mt-2.5 text-sm leading-relaxed text-neutral-600">
-            Every report currently in the city&apos;s 311 system. Filter by ward or
-            status. Click a pin to see details.
-          </p>
-          <p
-            aria-live="polite"
-            className="mt-4 border-t border-neutral-300 pt-3 font-mono text-xs tracking-wide text-neutral-500"
-          >
-            {isEmpty ? (
-              <span className="text-chicago-red">No potholes match your filters.</span>
-            ) : (
-              <>
-                <span className="font-semibold text-ink">
-                  {visibleCount.toLocaleString("en-US")}
-                </span>{" "}
-                visible on the map
-              </>
-            )}
-          </p>
-        </div>
+        {panelOpen && (
+          // Scroll rather than run off a short viewport. The Select menus
+          // portal out, so they aren't clipped by this.
+          <div className="max-h-[calc(100dvh-10rem)] overflow-y-auto px-5 pb-5">
+            {panel}
+          </div>
+        )}
       </div>
 
-      {/* Filters — desktop card top-right */}
-      <div className={cn(OVERLAY_CARD, "absolute top-4 right-4 z-20 hidden w-72 p-5 md:block")}>
-        <p className="mb-4 font-mono text-[0.65rem] tracking-[0.22em] text-neutral-500 uppercase">
-          Filter
-        </p>
-        {filters}
-      </div>
-
-      {/* Filters — mobile trigger top-right */}
+      {/* Panel — mobile. The dateline doubles as the control that opens it. */}
       <button
         type="button"
-        onClick={() => setMobileFiltersOpen(true)}
+        onClick={() => setMobilePanelOpen(true)}
         className={cn(
           OVERLAY_CARD,
-          "absolute top-4 right-4 z-20 flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-ink md:hidden",
+          "absolute top-4 right-4 left-4 z-20 flex items-center justify-between gap-3 px-4 py-3 text-left focus-visible:ring-2 focus-visible:ring-chicago-blue focus-visible:ring-inset focus-visible:outline-none md:hidden",
         )}
       >
-        <SlidersHorizontal className="size-4" />
-        Filter
+        {dateline}
+        <ChevronDown aria-hidden className="size-4 shrink-0 text-neutral-400" />
       </button>
 
-      {/* Legend — bottom-left, raised above the Mapbox logo */}
-      <div className={cn(OVERLAY_CARD, "absolute bottom-11 left-4 z-20 px-4 py-3")}>
-        <ul className="space-y-1.5">
-          {legendEntries(status).map((entry) => (
-            <li
-              key={entry.label}
-              className="flex items-center gap-2.5 text-xs text-neutral-600"
-            >
-              <span
-                className="size-2.5 rounded-full ring-1 ring-black/5"
-                style={{ backgroundColor: entry.color }}
-              />
-              {entry.label}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      {/* Reset view — bottom-right, raised above the attribution */}
+      {/* Reset — bottom-right, raised above the attribution */}
       <button
         type="button"
-        onClick={() =>
-          mapRef.current?.easeTo({
-            center: CHICAGO_CENTER,
-            zoom: CHICAGO_ZOOM,
-            bearing: 0,
-            pitch: 0,
-          })
-        }
+        onClick={resetMap}
         className={cn(
           OVERLAY_CARD,
           "absolute right-4 bottom-11 z-20 flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:text-chicago-red focus-visible:ring-2 focus-visible:ring-chicago-blue focus-visible:outline-none",
         )}
       >
-        <Crosshair className="size-4" />
-        Reset view
+        <Crosshair aria-hidden className="size-4" />
+        Reset map
       </button>
 
       {/* Error toast — Mapbox init/auth/style errors take priority over the
@@ -693,16 +649,21 @@ export function PotholeMap() {
         </div>
       )}
 
-      {/* Mobile filter sheet */}
-      <Sheet open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen}>
-        <SheetContent side="bottom" className="rounded-t-2xl bg-paper">
-          <SheetHeader>
-            <SheetTitle className="font-display text-xl">Filter potholes</SheetTitle>
+      {/* Mobile panel sheet — same content as the desktop card */}
+      <Sheet open={mobilePanelOpen} onOpenChange={setMobilePanelOpen}>
+        <SheetContent
+          side="bottom"
+          className="max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-paper"
+        >
+          <SheetHeader className="pb-0">
+            <SheetTitle className="font-mono text-[0.65rem] tracking-[0.22em] text-chicago-red/90 uppercase">
+              {view.kicker}
+            </SheetTitle>
             <SheetDescription className="sr-only">
-              Filter the map by ward and status.
+              What the map is showing, and the filters that change it.
             </SheetDescription>
           </SheetHeader>
-          <div className="px-4 pb-8">{filters}</div>
+          <div className="px-4 pb-8">{panel}</div>
         </SheetContent>
       </Sheet>
 
