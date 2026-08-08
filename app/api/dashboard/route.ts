@@ -6,6 +6,7 @@
  *   - SLA breach count
  *   - city summary stats
  *   - top 10 worst wards by median days-to-fix (last 30d)
+ *   - top 10 fastest wards by median days-to-fix (last 30d)
  *
  * All data comes from pre-computed cache tables (dashboard_cache and
  * ward_daily_stats), so this is cheap to call frequently.
@@ -14,7 +15,7 @@ import { NextResponse } from 'next/server';
 import { query } from '@/lib/db';
 
 // Force this route to be dynamic — Next would otherwise try to cache
-// it at build time, which is wrong (the data changes daily).
+// it at build time, which is wrong (the data refreshes every 4 hours).
 export const dynamic = 'force-dynamic';
 
 type CacheRow = {
@@ -46,8 +47,10 @@ export async function GET() {
 
     // Use the latest date we have stats for, not current_date — the
     // refresh runs daily but Postgres's current_date can be ahead of our
-    // most recent row across timezone boundaries.
-    const leaderboard = await query<LeaderboardRow>(
+    // most recent row across timezone boundaries. Pull both ends of the
+    // distribution in one round trip so the leaderboard page can toggle
+    // between the worst and the fastest wards without a second fetch.
+    const allRanked = await query<LeaderboardRow>(
       `select wds.ward_id,
               w.current_alderman,
               wds.open_count,
@@ -57,22 +60,34 @@ export async function GET() {
          join wards w on w.id = wds.ward_id
         where wds.date = (select max(date) from ward_daily_stats)
           and wds.median_days_to_fix is not null
-        order by wds.median_days_to_fix desc nulls last
-        limit 10`,
+        order by wds.median_days_to_fix asc`,
     );
 
-    return NextResponse.json({
-      oldest_open_pothole: cache.oldest_open_pothole?.value ?? null,
-      latest_open_report: cache.latest_open_report?.value ?? null,
-      sla_breach_count: cache.sla_breach_count?.value ?? null,
-      city_summary: cache.city_summary?.value ?? null,
-      leaderboard,
-      updated_at:
-        Object.values(cache)
-          .map((c) => c.updated_at)
-          .sort()
-          .pop() ?? null,
-    });
+    const fastest_leaderboard = allRanked.slice(0, 10);
+    const leaderboard = allRanked.slice(-10).reverse();
+
+    return NextResponse.json(
+      {
+        oldest_open_pothole: cache.oldest_open_pothole?.value ?? null,
+        latest_open_report: cache.latest_open_report?.value ?? null,
+        sla_breach_count: cache.sla_breach_count?.value ?? null,
+        city_summary: cache.city_summary?.value ?? null,
+        leaderboard,
+        fastest_leaderboard,
+        updated_at:
+          Object.values(cache)
+            .map((c) => c.updated_at)
+            .sort()
+            .pop() ?? null,
+      },
+      {
+        headers: {
+          // Backed by cache tables refreshed every 4 hours, so let Vercel's CDN
+          // serve repeated requests from the edge and refresh in the background.
+          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=14400",
+        },
+      },
+    );
   } catch (err) {
     console.error('[/api/dashboard] error:', err);
     return NextResponse.json(

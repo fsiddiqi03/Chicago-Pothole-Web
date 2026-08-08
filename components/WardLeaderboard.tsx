@@ -2,8 +2,11 @@ import type { LeaderboardEntry } from "@/types/dashboard";
 import { formatDecimal, formatInt, pad2 } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
+export type LeaderboardVariant = "slowest" | "fastest";
+
 interface WardLeaderboardProps {
   entries: LeaderboardEntry[];
+  variant?: LeaderboardVariant;
 }
 
 /** pg returns numeric columns as strings; coerce to a finite number or null. */
@@ -13,14 +16,40 @@ function toNumber(value: string | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function WardLeaderboard({ entries }: WardLeaderboardProps) {
+// 7 days is the city's stated SLA target. For the slowest view, we want the
+// worst offenders' bars to dominate even when medians cluster in the teens,
+// so 30 days (>4× target) is "full bar". For the fastest view, we invert
+// against the 7-day target so wards that beat it most decisively have the
+// longest bars — and the variance across the top-10 fastest stays legible.
+function computeBarWidth(
+  median: number | null,
+  variant: LeaderboardVariant,
+): number {
+  if (median == null) return 0;
+  if (variant === "slowest") {
+    return Math.min(1, Math.max(0, median / 30)) * 100;
+  }
+  return (1 - Math.min(1, Math.max(0, median / 7))) * 100;
+}
+
+export function WardLeaderboard({
+  entries,
+  variant = "slowest",
+}: WardLeaderboardProps) {
   if (entries.length === 0) {
     return (
       <p className="border-t border-neutral-300 pt-8 font-display text-xl italic text-neutral-500">
-        The leaderboard is refreshing &mdash; check back shortly.
+        {variant === "slowest"
+          ? "The leaderboard is refreshing — check back shortly."
+          : "The honor roll is refreshing — check back shortly."}
       </p>
     );
   }
+
+  const isFastest = variant === "fastest";
+  const accent = isFastest ? "text-chicago-blue" : "text-chicago-red";
+  const accentBg = isFastest ? "bg-chicago-blue" : "bg-chicago-red";
+  const supportingCopy = isFastest ? "under 7-day target" : "past 7-day target";
 
   return (
     <div>
@@ -34,12 +63,13 @@ export function WardLeaderboard({ entries }: WardLeaderboardProps) {
           const rank = i + 1;
           const pct = toNumber(entry.pct_over_sla);
           const median = toNumber(entry.median_days_to_fix);
-          // 30 days = full bar; anything slower clamps to 100%. The city's
-          // stated target is 7 days, so 30 is already >4× the SLA — finer
-          // resolution past that point isn't meaningful.
-          const barWidth =
-            median == null ? 0 : Math.min(1, Math.max(0, median / 30)) * 100;
-          const isWorst = rank === 1;
+          const barWidth = computeBarWidth(median, variant);
+          const isHighlight = rank === 1;
+          // For the slowest view, the "pct past SLA" number is the relevant
+          // supporting stat; for the fastest, we invert it so callers see how
+          // much of the ward's work is being delivered inside the 7-day target.
+          const supportingPct =
+            pct == null ? null : isFastest ? 100 - pct : pct;
 
           return (
             <li
@@ -48,11 +78,11 @@ export function WardLeaderboard({ entries }: WardLeaderboardProps) {
               style={{ animationDelay: `${i * 70}ms` }}
             >
               <div className="grid grid-cols-[2rem_1fr] items-start gap-x-4 py-7 sm:grid-cols-[3rem_1fr_9rem] sm:items-center sm:gap-x-8">
-                {/* Rank — the worst offender's numeral is marked in red. */}
+                {/* Rank — the headline entry's numeral is marked in the variant accent. */}
                 <span
                   className={cn(
                     "pt-1 font-mono text-sm tabular-nums sm:pt-0 sm:text-lg",
-                    isWorst ? "text-chicago-red" : "text-neutral-400",
+                    isHighlight ? accent : "text-neutral-400",
                   )}
                 >
                   {pad2(rank)}
@@ -65,7 +95,12 @@ export function WardLeaderboard({ entries }: WardLeaderboardProps) {
                       Ward {entry.ward_id}
                     </h2>
                     {/* Mobile-only headline; desktop shows it in its own column. */}
-                    <span className="shrink-0 font-mono text-2xl font-semibold tabular-nums text-chicago-red sm:hidden">
+                    <span
+                      className={cn(
+                        "shrink-0 font-mono text-2xl font-semibold tabular-nums sm:hidden",
+                        accent,
+                      )}
+                    >
                       {median == null ? "—" : formatDecimal(median, 1)}
                       <span className="ml-1.5 align-baseline text-[0.65rem] font-medium tracking-[0.15em] uppercase">
                         days
@@ -81,7 +116,7 @@ export function WardLeaderboard({ entries }: WardLeaderboardProps) {
 
                   <div className="mt-4 h-1.5 w-full overflow-hidden bg-neutral-200">
                     <div
-                      className="draw-rule h-full bg-chicago-red"
+                      className={cn("draw-rule h-full", accentBg)}
                       style={{
                         width: `${barWidth}%`,
                         animationDelay: `${i * 70 + 220}ms`,
@@ -95,15 +130,22 @@ export function WardLeaderboard({ entries }: WardLeaderboardProps) {
                     </span>{" "}
                     open &middot;{" "}
                     <span className="font-medium text-ink">
-                      {pct == null ? "—" : formatDecimal(pct, 1)}%
+                      {supportingPct == null
+                        ? "—"
+                        : `${formatDecimal(supportingPct, 1)}%`}
                     </span>{" "}
-                    past 7-day target
+                    {supportingCopy}
                   </p>
                 </div>
 
                 {/* Headline metric — desktop column. */}
                 <div className="hidden text-right sm:block">
-                  <div className="font-mono text-[2.5rem] leading-none font-semibold tracking-tight text-chicago-red tabular-nums">
+                  <div
+                    className={cn(
+                      "font-mono text-[2.5rem] leading-none font-semibold tracking-tight tabular-nums",
+                      accent,
+                    )}
+                  >
                     {median == null ? "—" : formatDecimal(median, 1)}
                     <span className="ml-2 align-top text-[0.7rem] font-medium tracking-[0.15em] uppercase">
                       days

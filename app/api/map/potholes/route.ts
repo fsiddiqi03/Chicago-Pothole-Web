@@ -158,7 +158,14 @@ export async function GET(request: NextRequest) {
     }
 
     const body: PotholeFeatureCollection = { type: "FeatureCollection", features };
-    return NextResponse.json(body);
+    return NextResponse.json(body, {
+      headers: {
+        // Data refreshes every 4 hours (the Lambda repopulates the tables), so
+        // let Vercel's CDN serve repeated requests from the edge and refresh in
+        // the background. Each status/ward combination caches under its own URL.
+        "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=14400",
+      },
+    });
   } catch (err) {
     console.error("[/api/map/potholes] error:", err);
     return NextResponse.json(

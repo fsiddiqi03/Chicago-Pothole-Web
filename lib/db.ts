@@ -1,4 +1,4 @@
-import { Client, QueryResult, QueryResultRow } from 'pg';
+import { Pool, QueryResult, QueryResultRow } from 'pg';
 
 // pg auto-reads PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE
 // from the environment. No DATABASE_URL parsing required.
@@ -9,18 +9,30 @@ if (!process.env.PGHOST || !process.env.PGPASSWORD) {
   );
 }
 
+// One Pool per server instance, reused across requests, so the TCP + TLS + auth
+// handshake is paid once per pooled connection instead of on every query. In
+// dev, Next.js hot-reload re-evaluates modules, so cache the pool on globalThis
+// to avoid leaking a new pool (and its connections) on every file save.
+const globalForPg = globalThis as unknown as { _pgPool?: Pool };
+
+const pool =
+  globalForPg._pgPool ??
+  new Pool({
+    // Keep small: the Supabase :6543 transaction pooler is the real gatekeeper,
+    // and on Vercel each serverless instance gets its own pool.
+    max: 5,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 10_000,
+  });
+
+if (process.env.NODE_ENV !== 'production') globalForPg._pgPool = pool;
+
 export async function query<T extends QueryResultRow = QueryResultRow>(
   sql: string,
   params?: unknown[],
 ): Promise<T[]> {
-  const client = new Client();  // reads PG* env vars automatically
-  await client.connect();
-  try {
-    const result: QueryResult<T> = await client.query<T>(sql, params);
-    return result.rows;
-  } finally {
-    await client.end();
-  }
+  const result: QueryResult<T> = await pool.query<T>(sql, params);
+  return result.rows;
 }
 
 export async function queryOne<T extends QueryResultRow = QueryResultRow>(

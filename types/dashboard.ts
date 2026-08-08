@@ -41,7 +41,10 @@ export interface DashboardData {
   latest_open_report: OpenPotholeRecord | null;
   sla_breach_count: SlaBreachCount | null;
   city_summary: CitySummary | null;
+  /** Top 10 wards by slowest median time-to-fix, descending. */
   leaderboard: LeaderboardEntry[];
+  /** Top 10 wards by fastest median time-to-fix, ascending. */
+  fastest_leaderboard: LeaderboardEntry[];
   /** ISO 8601 timestamp of the most recent cache refresh. */
   updated_at: string | null;
 }
