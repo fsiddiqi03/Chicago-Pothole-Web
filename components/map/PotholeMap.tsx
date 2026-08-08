@@ -37,7 +37,7 @@ const EMPTY_FC: GeoJSON.FeatureCollection = {
 };
 
 const OVERLAY_CARD =
-  "rounded-lg border border-neutral-300/80 bg-paper/95 shadow-[0_2px_12px_rgba(0,0,0,0.07)] backdrop-blur-sm";
+  "rounded-lg border border-curb bg-aggregate/95 shadow-[0_2px_12px_rgba(0,0,0,0.07)] backdrop-blur-sm";
 
 /**
  * Build the "spotlight" mask: a world-covering polygon with the selected ward's
@@ -199,7 +199,9 @@ export function PotholeMap() {
 
         map = new mapboxgl.Map({
           container: containerRef.current,
-          style: "mapbox://styles/mapbox/light-v11",
+          // Dark basemap so the canvas reads as the same asphalt surface as the
+          // rest of the site rather than a bright panel punched into it.
+          style: "mapbox://styles/mapbox/dark-v11",
           center: CHICAGO_CENTER,
           zoom: CHICAGO_ZOOM,
           minZoom: 8,
@@ -246,7 +248,7 @@ export function PotholeMap() {
             id: "ward-mask-fill",
             type: "fill",
             source: "ward-mask",
-            paint: { "fill-color": "#0a0a0a", "fill-opacity": 0.35 },
+            paint: { "fill-color": "#131417", "fill-opacity": 0.62 },
           } as unknown as MB.LayerSpecification);
 
           map.addLayer({
@@ -254,7 +256,8 @@ export function PotholeMap() {
             type: "line",
             source: "wards",
             filter: ["==", ["get", "id"], -1],
-            paint: { "line-color": STATUS_COLORS.overdue, "line-width": 3 },
+            // Hazard yellow marks the *selection*, so it never reads as a status.
+            paint: { "line-color": "#ffc72c", "line-width": 3 },
           } as unknown as MB.LayerSpecification);
 
           map.addLayer({
@@ -263,9 +266,11 @@ export function PotholeMap() {
             source: "potholes",
             filter: ["has", "point_count"],
             paint: {
-              "circle-color": STATUS_COLORS.overdue,
-              "circle-opacity": 0.9,
-              "circle-stroke-color": "#fafaf7",
+              // Clusters are an aggregation, not a status, so they take the
+              // neutral paint tone rather than borrowing a status hue.
+              "circle-color": "#eae6db",
+              "circle-opacity": 0.92,
+              "circle-stroke-color": "#131417",
               "circle-stroke-width": 1.5,
               "circle-radius": ["step", ["get", "point_count"], 18, 25, 26, 100, 34],
             },
@@ -281,7 +286,7 @@ export function PotholeMap() {
               "text-font": ["DIN Offc Pro Medium", "Arial Unicode MS Bold"],
               "text-size": 12,
             },
-            paint: { "text-color": "#ffffff" },
+            paint: { "text-color": "#131417" },
           } as unknown as MB.LayerSpecification);
 
           map.addLayer({
@@ -292,7 +297,7 @@ export function PotholeMap() {
             paint: {
               "circle-radius": 6,
               "circle-stroke-width": 1.5,
-              "circle-stroke-color": "#fafaf7",
+              "circle-stroke-color": "#131417",
               "circle-color": [
                 "case",
                 ["==", ["get", "over_sla"], true],
@@ -484,9 +489,9 @@ export function PotholeMap() {
   /** Place, status, and count — the whole map state in one line. */
   const dateline = (
     <span className="min-w-0 truncate font-mono text-[0.65rem] tracking-[0.22em] uppercase">
-      <span className="text-chicago-red/90">{view.dateline}</span>
-      <span className="text-neutral-400"> · </span>
-      <span className="font-semibold text-ink">{countLabel}</span>
+      <span className="text-hazard">{view.dateline}</span>
+      <span className="text-paint-dim/70"> · </span>
+      <span className="font-semibold text-paint">{countLabel}</span>
     </span>
   );
 
@@ -504,10 +509,10 @@ export function PotholeMap() {
 
   if (!TOKEN) {
     return (
-      <div className="flex h-[calc(100dvh-4rem)] items-center justify-center bg-paper px-6">
+      <div className="flex h-[calc(100dvh-4rem)] items-center justify-center bg-asphalt px-6">
         <div className={cn(OVERLAY_CARD, "max-w-md p-8 text-center")}>
-          <h1 className="font-display text-2xl text-ink">Map unavailable</h1>
-          <p className="mt-3 text-sm text-neutral-500">
+          <h1 className="font-display text-3xl tracking-tight text-paint uppercase">Map unavailable</h1>
+          <p className="mt-3 text-sm text-paint-dim">
             The map needs a Mapbox token. Set{" "}
             <code className="font-mono text-xs">NEXT_PUBLIC_MAPBOX_TOKEN</code> in{" "}
             <code className="font-mono text-xs">.env.local</code> and restart the dev
@@ -535,7 +540,7 @@ export function PotholeMap() {
   );
 
   return (
-    <div className="relative h-[calc(100dvh-4rem)] w-full overflow-hidden bg-paper">
+    <div className="relative h-[calc(100dvh-4rem)] w-full overflow-hidden bg-asphalt">
       {/* Mapbox adds class `mapboxgl-map` to this div with `position: relative`,
           which overrides Tailwind's `.absolute` (same specificity, later in
           source order) and collapses `inset-0` to 0×0. Use h/w-full so the
@@ -556,7 +561,7 @@ export function PotholeMap() {
           loading ? "opacity-100" : "opacity-0",
         )}
       >
-        <div className="map-loadbar h-full w-1/4 bg-chicago-red" />
+        <div className="map-loadbar h-full w-1/4 bg-cone" />
       </div>
 
       {/* Panel — desktop, top-left. Collapsed it still states what's on the
@@ -571,10 +576,10 @@ export function PotholeMap() {
           type="button"
           onClick={() => setPanelOpen((prev) => !prev)}
           aria-expanded={panelOpen}
-          className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left focus-visible:ring-2 focus-visible:ring-chicago-blue focus-visible:ring-inset focus-visible:outline-none"
+          className="flex w-full items-center justify-between gap-3 px-5 py-3 text-left focus-visible:ring-2 focus-visible:ring-ice focus-visible:ring-inset focus-visible:outline-none"
         >
           {panelOpen ? (
-            <span className="font-mono text-[0.65rem] tracking-[0.22em] text-chicago-red/90 uppercase">
+            <span className="font-mono text-[0.65rem] tracking-[0.22em] text-hazard uppercase">
               {view.kicker}
             </span>
           ) : (
@@ -583,7 +588,7 @@ export function PotholeMap() {
           <ChevronDown
             aria-hidden
             className={cn(
-              "size-4 shrink-0 text-neutral-400 transition-transform",
+              "size-4 shrink-0 text-paint-dim/70 transition-transform",
               panelOpen && "rotate-180",
             )}
           />
@@ -603,11 +608,11 @@ export function PotholeMap() {
         onClick={() => setMobilePanelOpen(true)}
         className={cn(
           OVERLAY_CARD,
-          "absolute top-4 right-4 left-4 z-20 flex items-center justify-between gap-3 px-4 py-3 text-left focus-visible:ring-2 focus-visible:ring-chicago-blue focus-visible:ring-inset focus-visible:outline-none md:hidden",
+          "absolute top-4 right-4 left-4 z-20 flex items-center justify-between gap-3 px-4 py-3 text-left focus-visible:ring-2 focus-visible:ring-ice focus-visible:ring-inset focus-visible:outline-none md:hidden",
         )}
       >
         {dateline}
-        <ChevronDown aria-hidden className="size-4 shrink-0 text-neutral-400" />
+        <ChevronDown aria-hidden className="size-4 shrink-0 text-paint-dim/70" />
       </button>
 
       {/* Reset — bottom-right, raised above the attribution */}
@@ -616,7 +621,7 @@ export function PotholeMap() {
         onClick={resetMap}
         className={cn(
           OVERLAY_CARD,
-          "absolute right-4 bottom-11 z-20 flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:text-chicago-red focus-visible:ring-2 focus-visible:ring-chicago-blue focus-visible:outline-none",
+          "absolute right-4 bottom-11 z-20 flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-paint transition-colors hover:text-cone focus-visible:ring-2 focus-visible:ring-ice focus-visible:outline-none",
         )}
       >
         <Crosshair aria-hidden className="size-4" />
@@ -630,10 +635,10 @@ export function PotholeMap() {
           role="alert"
           className={cn(
             OVERLAY_CARD,
-            "absolute top-20 left-1/2 z-30 flex max-w-[min(640px,calc(100%-2rem))] -translate-x-1/2 items-center gap-3 px-4 py-2.5 text-sm text-ink",
+            "absolute top-20 left-1/2 z-30 flex max-w-[min(640px,calc(100%-2rem))] -translate-x-1/2 items-center gap-3 px-4 py-2.5 text-sm text-paint",
           )}
         >
-          <MapPin className="size-4 shrink-0 text-chicago-red" />
+          <MapPin className="size-4 shrink-0 text-cone" />
           <span className="min-w-0 break-words">
             {mapError ? `Map error: ${mapError}` : "Unable to load map data."}
           </span>
@@ -641,7 +646,7 @@ export function PotholeMap() {
             <button
               type="button"
               onClick={() => setRetryNonce((n) => n + 1)}
-              className="font-medium text-chicago-red underline underline-offset-2 focus-visible:outline-none"
+              className="font-medium text-cone underline underline-offset-2 focus-visible:outline-none"
             >
               Retry
             </button>
@@ -653,10 +658,10 @@ export function PotholeMap() {
       <Sheet open={mobilePanelOpen} onOpenChange={setMobilePanelOpen}>
         <SheetContent
           side="bottom"
-          className="max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-paper"
+          className="max-h-[85dvh] overflow-y-auto rounded-t-2xl bg-asphalt"
         >
           <SheetHeader className="pb-0">
-            <SheetTitle className="font-mono text-[0.65rem] tracking-[0.22em] text-chicago-red/90 uppercase">
+            <SheetTitle className="font-mono text-[0.65rem] tracking-[0.22em] text-hazard uppercase">
               {view.kicker}
             </SheetTitle>
             <SheetDescription className="sr-only">

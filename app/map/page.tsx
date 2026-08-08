@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 // supplies the map itself, which fills the viewport beneath that sticky header.
 export default function MapPage() {
   return (
-    <Suspense fallback={<div className="h-[calc(100dvh-4rem)] w-full bg-paper" />}>
+    <Suspense fallback={<div className="h-[calc(100dvh-4rem)] w-full bg-asphalt" />}>
       <PotholeMap />
     </Suspense>
   );

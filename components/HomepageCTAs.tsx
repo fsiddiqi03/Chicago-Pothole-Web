@@ -5,7 +5,6 @@ import { SectionHeading } from "@/components/SectionHeading";
 
 interface CTA {
   href: string;
-  index: string;
   title: string;
   subtext: string;
 }
@@ -13,49 +12,55 @@ interface CTA {
 const CTAS: CTA[] = [
   {
     href: "/map",
-    index: "A",
-    title: "Explore the map",
-    subtext: "See every open pothole in Chicago, color-coded by age.",
+    title: "The map",
+    subtext:
+      "Every open report, pinned and coloured by how long it has been waiting. Filter to your ward.",
   },
   {
     href: "/leaderboard",
-    index: "B",
-    title: "See the leaderboard",
+    title: "The leaderboard",
     subtext:
-      "Which wards are slowest to respond — and which alderpersons represent them.",
+      "The ten slowest wards and the ten fastest, with the alderperson who represents each one.",
   },
 ];
 
 export function HomepageCTAs() {
   return (
-    <section className="px-6 py-24">
-      <div className="mx-auto max-w-5xl">
-        <SectionHeading numeral="03" label="Go deeper" />
-        <div className="mt-12 grid grid-cols-1 gap-6 sm:grid-cols-2">
+    <section className="relative overflow-hidden border-t border-curb px-6 py-24">
+      {/* Lane arrow, painted on the surface. It points at the two ways forward
+          from here, which is what the section is for. */}
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 120 220"
+        className="pointer-events-none absolute -left-6 top-24 hidden h-[26rem] w-auto text-paint/[0.045] lg:block"
+        fill="currentColor"
+      >
+        <path d="M60 0 L112 74 L78 74 L78 220 L42 220 L42 74 L8 74 Z" />
+      </svg>
+
+      <div className="relative mx-auto max-w-6xl">
+        <SectionHeading label="Go deeper" />
+        <div className="mt-10 grid grid-cols-1 gap-px bg-curb sm:grid-cols-2">
           {CTAS.map((cta) => (
             <Link
               key={cta.href}
               href={cta.href}
-              className="group relative flex flex-col justify-between gap-10 overflow-hidden rounded-sm border border-neutral-300 p-8 transition-colors hover:border-chicago-blue focus-visible:border-chicago-blue focus-visible:ring-2 focus-visible:ring-chicago-blue focus-visible:outline-none"
+              className="group flex flex-col justify-between gap-12 bg-asphalt p-8 transition-colors hover:bg-aggregate focus-visible:ring-2 focus-visible:ring-ice focus-visible:outline-none sm:p-10"
             >
-              {/* Oversized faint index letter, like a section tab. */}
-              <span
-                aria-hidden="true"
-                className="pointer-events-none absolute -top-6 -right-2 font-display text-[7rem] leading-none text-neutral-200 transition-colors duration-300 group-hover:text-chicago-blue/30"
-              >
-                {cta.index}
-              </span>
-              <div className="relative">
-                <h3 className="font-display text-2xl tracking-tight text-ink sm:text-3xl">
+              <div>
+                <h3 className="font-display text-[clamp(2.25rem,4.5vw,3.5rem)] leading-[0.9] tracking-tight text-paint uppercase transition-colors group-hover:text-hazard">
                   {cta.title}
                 </h3>
-                <p className="mt-3 max-w-xs text-base leading-relaxed text-neutral-600">
+                <p className="mt-4 max-w-sm text-sm leading-relaxed text-paint-dim">
                   {cta.subtext}
                 </p>
               </div>
-              <span className="relative flex items-center gap-2 font-mono text-xs tracking-[0.2em] text-neutral-500 uppercase transition-colors group-hover:text-chicago-blue">
-                View
-                <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+              <span className="flex items-center gap-2 font-mono text-[0.65rem] tracking-[0.2em] text-paint-dim uppercase transition-colors group-hover:text-hazard">
+                Open
+                <ArrowRight
+                  aria-hidden="true"
+                  className="size-4 transition-transform group-hover:translate-x-1"
+                />
               </span>
             </Link>
           ))}

@@ -1,126 +1,139 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { ChevronDown } from "lucide-react";
-
-import type { OpenPotholeRecord } from "@/types/dashboard";
-import { formatInt, formatReportDate, titleCase } from "@/lib/format";
-import { LastReportedTimer } from "@/components/LastReportedTimer";
+import type { CitySummary, LeaderboardEntry } from "@/types/dashboard";
+import { formatDecimal, formatInt } from "@/lib/format";
+import { SLA_DAYS, WardWall } from "@/components/WardWall";
 
 interface HeroSectionProps {
-  /** Count of potholes open across the city right now — the hero figure. */
-  openCount: number | null;
-  /** Most recently reported open pothole, for the live "last reported" line. */
-  latestReport: OpenPotholeRecord | null;
-  /** Server-captured epoch ms, threaded down to the timer. */
-  now: number;
+  citySummary: CitySummary | null;
+  /** Every ward with a median, for the wall. */
+  allWards: LeaderboardEntry[];
+  /** Count of open reports past the city's target. */
+  breachCount: number | null;
 }
 
-export function HeroSection({ openCount, latestReport, now }: HeroSectionProps) {
-  const [opacity, setOpacity] = useState(1);
-
-  // Fade the whole hero out as it scrolls away: fully visible at the top,
-  // transparent once the user has scrolled one viewport. Opacity only — no
-  // position changes — so we never fight the user's scroll. rAF throttles it.
-  useEffect(() => {
-    let frame = 0;
-    const update = () => {
-      frame = 0;
-      const viewport = window.innerHeight || 1;
-      setOpacity(Math.max(0, 1 - window.scrollY / viewport));
-    };
-    const onScroll = () => {
-      if (frame === 0) frame = requestAnimationFrame(update);
-    };
-    update();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      window.removeEventListener("scroll", onScroll);
-      if (frame) cancelAnimationFrame(frame);
-    };
-  }, []);
-
-  const hasCount = openCount != null;
+/**
+ * The page opens on the argument rather than a headline figure: the city's
+ * promise, the distance from it, and every ward measured against it.
+ */
+export function HeroSection({
+  citySummary,
+  allWards,
+  breachCount,
+}: HeroSectionProps) {
+  const open = citySummary?.total_open ?? null;
+  const avg = citySummary?.avg_days_to_fix_30d ?? null;
+  const breachPct =
+    breachCount != null && open != null && open > 0
+      ? (breachCount / open) * 100
+      : null;
 
   return (
-    <section
-      style={{ opacity, willChange: "opacity" }}
-      className="flex min-h-[calc(100vh-4rem)] flex-col px-6 py-12"
-    >
-      <div className="flex flex-1 flex-col items-center justify-center text-center">
+    <section className="px-6 pt-16 pb-20 sm:pt-24">
+      <div className="mx-auto max-w-6xl">
         <div
-          className="reveal flex max-w-xl items-center justify-center gap-4"
-          style={{ animationDelay: "60ms" }}
+          className="reveal flex items-center gap-4"
+          style={{ animationDelay: "40ms" }}
         >
-          <span className="hidden h-px w-10 bg-neutral-300 sm:block" />
-          <p className="text-[0.7rem] font-medium tracking-[0.2em] text-neutral-500 uppercase sm:text-xs">
-            As of now, the city of Chicago has
-          </p>
-          <span className="hidden h-px w-10 bg-neutral-300 sm:block" />
+          <span className="font-mono text-[0.65rem] tracking-[0.24em] text-hazard uppercase">
+            Chicago 311 · Pothole repairs
+          </span>
+          <span className="lane-rule h-[3px] flex-1" />
         </div>
 
-        <div className="reveal mt-10" style={{ animationDelay: "180ms" }}>
-          {hasCount ? (
-            <div className="flex flex-col items-center">
-              {/* Sole <h1> on the page. Fluid size: fills small screens, caps
-                  on desktop, and the vw term keeps even a 6-digit count inside
-                  the viewport without wrapping. */}
-              <h1
-                style={{ fontSize: "clamp(5rem, 27vw, 11rem)" }}
-                className="font-mono leading-[0.82] font-black tracking-tighter whitespace-nowrap text-chicago-red tabular-nums"
-              >
-                {formatInt(openCount)}
-              </h1>
-              <p className="mt-10 text-xs font-semibold tracking-[0.4em] text-neutral-500 uppercase">
-                Open potholes
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center">
-              <p className="font-mono text-8xl leading-none font-black text-chicago-red sm:text-9xl">
-                &mdash;
-              </p>
-              <p className="mt-5 font-display text-xl italic text-neutral-600">
-                Data unavailable
-              </p>
-            </div>
+        <h1
+          className="reveal mt-10 font-display text-[clamp(3.5rem,13vw,10.5rem)] leading-[0.82] tracking-[-0.02em] text-paint uppercase"
+          style={{ animationDelay: "120ms" }}
+        >
+          Chicago says
+          <br />
+          <span className="text-hazard">seven days.</span>
+        </h1>
+
+        <p
+          className="reveal mt-10 max-w-2xl text-lg leading-relaxed text-paint-dim"
+          style={{ animationDelay: "240ms" }}
+        >
+          That is the city&apos;s stated target for filling a pothole once
+          someone reports it.{" "}
+          {avg != null && (
+            <>
+              Over the last 30 days the median repair took{" "}
+              <span className="text-paint">{formatDecimal(avg)} days</span>.{" "}
+            </>
           )}
+          {breachPct != null && breachCount != null && (
+            <>
+              Of the reports open right now,{" "}
+              <span className="text-cone">
+                {formatDecimal(breachPct, 0)}%
+              </span>{" "}
+              are already past the target.{" "}
+            </>
+          )}
+          Every ward is below, measured against the promise.
+        </p>
+
+        <div className="reveal mt-14" style={{ animationDelay: "360ms" }}>
+          <WardWall wards={allWards} />
         </div>
 
-        {latestReport && (
-          <div className="reveal mt-14" style={{ animationDelay: "380ms" }}>
-            <div className="flex items-center justify-center gap-3">
-              <span className="h-px w-8 bg-neutral-300" />
-              <p className="font-mono text-[0.7rem] tracking-[0.2em] text-neutral-500 uppercase">
-                Last reported
-              </p>
-              <span className="h-px w-8 bg-neutral-300" />
-            </div>
-
-            <div className="mt-5">
-              <LastReportedTimer createdAt={latestReport.created_at} now={now} />
-            </div>
-
-            <p className="mt-8 font-display text-2xl italic text-ink sm:text-3xl">
-              {titleCase(latestReport.street_address)}
-            </p>
-            <p className="mt-3 font-mono text-[0.7rem] tracking-[0.15em] text-neutral-500 uppercase">
-              Ward {latestReport.ward_id} &nbsp;&middot;&nbsp; Reported{" "}
-              {formatReportDate(latestReport.created_at)}
-            </p>
-          </div>
-        )}
-      </div>
-
-      <div
-        className="reveal flex flex-col items-center gap-2 pb-6 text-neutral-400"
-        style={{ animationDelay: "620ms" }}
-      >
-        <span className="font-display text-sm italic">
-          Scroll to see what this means
-        </span>
-        <ChevronDown className="size-5 animate-bounce" aria-hidden="true" />
+        <dl
+          className="reveal mt-14 grid grid-cols-2 gap-x-8 gap-y-8 border-t border-curb pt-8 sm:grid-cols-4"
+          style={{ animationDelay: "480ms" }}
+        >
+          <HeroFigure
+            value={formatInt(open)}
+            label="Open right now"
+            tone="paint"
+          />
+          <HeroFigure
+            value={formatInt(breachCount)}
+            label={`Past the ${SLA_DAYS}-day target`}
+            tone="cone"
+          />
+          <HeroFigure
+            value={formatDecimal(avg)}
+            label="Median days to fix, last 30d"
+            tone="hazard"
+          />
+          <HeroFigure
+            value={formatInt(citySummary?.completed_30d)}
+            label="Repairs completed, last 30d"
+            tone="ice"
+          />
+        </dl>
       </div>
     </section>
+  );
+}
+
+const TONES = {
+  paint: "text-paint",
+  cone: "text-cone",
+  hazard: "text-hazard",
+  ice: "text-ice",
+} as const;
+
+function HeroFigure({
+  value,
+  label,
+  tone,
+}: {
+  value: string;
+  label: string;
+  tone: keyof typeof TONES;
+}) {
+  return (
+    // A definition list must run dt-then-dd, so the pair is reversed with flex
+    // rather than by putting the value first in the markup.
+    <div className="flex flex-col-reverse gap-3">
+      <dt className="font-mono text-[0.65rem] leading-relaxed tracking-[0.14em] text-paint-dim uppercase">
+        {label}
+      </dt>
+      <dd
+        className={`font-display text-[clamp(2.5rem,6vw,4rem)] leading-[0.85] tracking-tight tabular-nums ${TONES[tone]}`}
+      >
+        {value}
+      </dd>
+    </div>
   );
 }

@@ -4,14 +4,18 @@
 
 import type { MapStatusFilter } from "@/types/map";
 
-/** Status hues, shared by the Mapbox paint expressions and the legend. */
+/**
+ * Status hues, shared by the Mapbox paint expressions and the legend. These are
+ * the site's road-marking tokens: cone always means past the 7-day target, ice
+ * always means the promise was met, hazard means open and still inside it.
+ */
 export const STATUS_COLORS = {
   /** Open past the city's 7-day target. */
-  overdue: "#c8102e",
+  overdue: "#ff4d1f",
   /** Open, still within target. */
-  open: "#f59e0b",
-  completed: "#10b981",
-  canceled: "#9ca3af",
+  open: "#ffc72c",
+  completed: "#41b6e6",
+  canceled: "#97948c",
 } as const;
 
 interface StatusCopy {

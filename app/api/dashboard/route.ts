@@ -52,15 +52,17 @@ export async function GET() {
     // between the worst and the fastest wards without a second fetch.
     const allRanked = await query<LeaderboardRow>(
       `select wds.ward_id,
-              w.current_alderman,
-              wds.open_count,
-              wds.median_days_to_fix,
-              wds.pct_over_sla
-         from ward_daily_stats wds
-         join wards w on w.id = wds.ward_id
-        where wds.date = (select max(date) from ward_daily_stats)
-          and wds.median_days_to_fix is not null
-        order by wds.median_days_to_fix asc`,
+       w.current_alderman,
+       wds.open_count,
+       wds.median_days_to_fix,
+       wds.repair_sample_n,
+       (wds.repair_sample_n >= 5) as is_rankable,
+       wds.pct_over_sla
+      from ward_daily_stats wds
+      join wards w on w.id = wds.ward_id
+      where wds.date = (select max(date) from ward_daily_stats)
+      order by (wds.repair_sample_n >= 5) desc,
+      wds.median_days_to_fix asc nulls last`,
     );
 
     const fastest_leaderboard = allRanked.slice(0, 10);
@@ -74,6 +76,9 @@ export async function GET() {
         city_summary: cache.city_summary?.value ?? null,
         leaderboard,
         fastest_leaderboard,
+        // The full distribution was already fetched to slice the two tails;
+        // returning it costs nothing and lets the homepage plot all 50 wards.
+        all_wards: allRanked,
         updated_at:
           Object.values(cache)
             .map((c) => c.updated_at)

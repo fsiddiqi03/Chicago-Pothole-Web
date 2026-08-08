@@ -4,8 +4,11 @@ import Link from "next/link";
 import { useId, useState } from "react";
 
 import type { LeaderboardEntry } from "@/types/dashboard";
+import type { CityHistoryPoint, WardHistoryBundle } from "@/lib/ward-history";
 import { cn } from "@/lib/utils";
 import { formatRefreshedAt } from "@/lib/format";
+import { SectionHeading } from "@/components/SectionHeading";
+import { CityTrendChart } from "@/components/leaderboard/CityTrendChart";
 import { WardLeaderboard } from "@/components/WardLeaderboard";
 
 type Variant = "slowest" | "fastest";
@@ -14,6 +17,9 @@ interface LeaderboardTabsProps {
   slowest: LeaderboardEntry[];
   fastest: LeaderboardEntry[];
   updatedAt: string | null;
+  /** Daily series for every ward shown in either tab. */
+  history: WardHistoryBundle;
+  cityHistory: CityHistoryPoint[];
 }
 
 interface VariantCopy {
@@ -40,8 +46,8 @@ const COPY: Record<Variant, VariantCopy> = {
       </>
     ),
     tabLabel: "Slowest 10",
-    accentBg: "bg-chicago-red",
-    accentText: "text-chicago-red",
+    accentBg: "bg-cone",
+    accentText: "text-cone",
     footnote: (
       <>
         Why rank by median time-to-fix instead of raw counts or the share past
@@ -62,8 +68,8 @@ const COPY: Record<Variant, VariantCopy> = {
       </>
     ),
     tabLabel: "Fastest 10",
-    accentBg: "bg-chicago-blue",
-    accentText: "text-chicago-blue",
+    accentBg: "bg-ice",
+    accentText: "text-ice",
     footnote: (
       <>
         A faster median doesn&apos;t always mean a healthier ward &mdash; small
@@ -78,6 +84,8 @@ export function LeaderboardTabs({
   slowest,
   fastest,
   updatedAt,
+  history,
+  cityHistory,
 }: LeaderboardTabsProps) {
   const [variant, setVariant] = useState<Variant>("slowest");
   const tablistId = useId();
@@ -106,16 +114,16 @@ export function LeaderboardTabs({
             />
             <span
               key={`kicker-label-${variant}`}
-              className="font-mono text-xs tracking-[0.25em] text-neutral-500 uppercase"
+              className="font-mono text-xs tracking-[0.25em] text-paint-dim uppercase"
             >
               {copy.kicker}
             </span>
-            <span className="h-px flex-1 bg-neutral-300" />
+            <span className="h-px flex-1 bg-curb" />
           </div>
 
           <h1
             key={`headline-${variant}`}
-            className="reveal mt-8 max-w-3xl font-display text-5xl leading-[0.98] tracking-tight text-ink sm:text-7xl"
+            className="reveal mt-8 max-w-3xl font-display text-[clamp(3rem,9vw,6.5rem)] leading-[0.86] tracking-tight text-paint uppercase"
             style={{ animationDelay: "120ms" }}
           >
             {copy.headline}
@@ -123,14 +131,14 @@ export function LeaderboardTabs({
 
           <p
             key={`lede-${variant}`}
-            className="reveal mt-7 max-w-2xl text-lg leading-relaxed text-neutral-600"
+            className="reveal mt-7 max-w-2xl text-lg leading-relaxed text-paint-dim"
             style={{ animationDelay: "220ms" }}
           >
             {copy.lede}
           </p>
 
           <p
-            className="reveal mt-6 font-mono text-[0.7rem] tracking-[0.12em] text-neutral-400 uppercase"
+            className="reveal mt-6 font-mono text-[0.7rem] tracking-[0.12em] text-paint-dim/70 uppercase"
             style={{ animationDelay: "300ms" }}
           >
             {refreshedLine}data refreshed daily from Chicago 311.
@@ -138,13 +146,24 @@ export function LeaderboardTabs({
         </div>
       </section>
 
-      <section className="px-6 pb-24">
+      {cityHistory.length > 0 && (
+        <section className="border-y border-curb bg-aggregate px-6 py-16">
+          <div className="mx-auto max-w-5xl">
+            <SectionHeading label="The city, day by day" />
+            <div className="mt-10">
+              <CityTrendChart points={cityHistory} />
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="px-6 pt-20 pb-24">
         <div className="mx-auto max-w-5xl">
           <div
             role="tablist"
             aria-label="Leaderboard view"
             id={tablistId}
-            className="reveal mb-10 flex items-end gap-8 border-b border-neutral-300 sm:gap-12"
+            className="reveal mb-10 flex items-end gap-8 border-b border-curb sm:gap-12"
             style={{ animationDelay: "360ms" }}
           >
             {(Object.keys(COPY) as Variant[]).map((key) => {
@@ -160,7 +179,7 @@ export function LeaderboardTabs({
                   tabIndex={isActive ? 0 : -1}
                   onClick={() => setVariant(key)}
                   className={cn(
-                    "group relative -mb-px flex items-center gap-3 pt-3 pb-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-chicago-blue",
+                    "group relative -mb-px flex items-center gap-3 pt-3 pb-4 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ice",
                     isActive
                       ? "cursor-default"
                       : "cursor-pointer",
@@ -175,15 +194,15 @@ export function LeaderboardTabs({
                       "size-2 shrink-0 transition-all",
                       isActive
                         ? tabCopy.accentBg
-                        : "border border-neutral-400 bg-transparent group-hover:border-ink",
+                        : "border border-paint-dim bg-transparent group-hover:border-paint",
                     )}
                   />
                   <span
                     className={cn(
-                      "font-display text-xl tracking-tight transition-colors sm:text-2xl",
+                      "font-display text-2xl leading-none tracking-tight uppercase transition-colors sm:text-3xl",
                       isActive
-                        ? "text-ink"
-                        : "text-neutral-400 group-hover:text-neutral-700",
+                        ? "text-paint"
+                        : "text-paint-dim/70 group-hover:text-paint",
                     )}
                   >
                     {tabCopy.tabLabel}
@@ -209,14 +228,18 @@ export function LeaderboardTabs({
             // animations replay each time the user toggles tabs.
             key={variant}
           >
-            <WardLeaderboard entries={entries} variant={variant} />
+            <WardLeaderboard
+              entries={entries}
+              variant={variant}
+              history={history}
+            />
           </div>
 
-          <p className="mt-14 max-w-xl text-sm leading-relaxed text-neutral-500">
+          <p className="mt-14 max-w-xl text-sm leading-relaxed text-paint-dim">
             {copy.footnote}{" "}
             <Link
               href="/methodology"
-              className="rounded-sm font-medium text-ink underline decoration-ink/30 underline-offset-4 transition-colors hover:text-chicago-red focus-visible:ring-2 focus-visible:ring-chicago-blue focus-visible:outline-none"
+              className="rounded-sm font-medium text-paint underline decoration-paint/30 underline-offset-4 transition-colors hover:text-cone focus-visible:ring-2 focus-visible:ring-ice focus-visible:outline-none"
             >
               Read the methodology
             </Link>

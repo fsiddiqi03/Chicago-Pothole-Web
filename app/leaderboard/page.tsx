@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import type { Metadata } from "next";
 
 import type { DashboardData } from "@/types/dashboard";
+import { getCityHistory, getWardHistories } from "@/lib/ward-history";
 import { LeaderboardTabs } from "@/components/LeaderboardTabs";
 import { SiteFooter } from "@/components/SiteFooter";
 
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = {
   title: "Ward Leaderboard — Chicago Pothole Tracker",
   description:
-    "The ten Chicago wards with the slowest — and the ten with the fastest — median time to repair a pothole, based on the last 30 days of 311 data.",
+    "The ten Chicago wards with the slowest — and the ten with the fastest — median time to repair a pothole, with each ward's full daily history.",
 };
 
 async function getDashboardData(): Promise<DashboardData | null> {
@@ -36,14 +37,27 @@ async function getDashboardData(): Promise<DashboardData | null> {
 
 export default async function LeaderboardPage() {
   const data = await getDashboardData();
+  const slowest = data?.leaderboard ?? [];
+  const fastest = data?.fastest_leaderboard ?? [];
+
+  // History is read straight from the database rather than over HTTP: this is
+  // already a server component, and only the twenty wards on screen are needed.
+  // Both queries are independent, so they run together.
+  const shownWards = [...slowest, ...fastest].map((e) => e.ward_id);
+  const [history, cityHistory] = await Promise.all([
+    getWardHistories(shownWards).catch(() => ({ dates: [], series: {} })),
+    getCityHistory().catch(() => []),
+  ]);
 
   return (
     <>
       <main>
         <LeaderboardTabs
-          slowest={data?.leaderboard ?? []}
-          fastest={data?.fastest_leaderboard ?? []}
+          slowest={slowest}
+          fastest={fastest}
           updatedAt={data?.updated_at ?? null}
+          history={history}
+          cityHistory={cityHistory}
         />
       </main>
       <SiteFooter />

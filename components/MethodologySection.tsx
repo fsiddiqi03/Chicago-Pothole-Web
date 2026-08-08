@@ -2,54 +2,106 @@ import Link from "next/link";
 
 import { SectionHeading } from "@/components/SectionHeading";
 
+interface SpecRow {
+  term: string;
+  detail: string;
+}
+
+// A public-works spec sheet rather than an essay: these are the choices that
+// decide what every number on the site means.
+const SPEC: SpecRow[] = [
+  {
+    term: "Source",
+    detail:
+      "The city's own 311 service requests, published as open data and pulled fresh every day.",
+  },
+  {
+    term: "Measure",
+    detail:
+      "Median days from the moment a resident reports a pothole to the moment the city closes the ticket as repaired.",
+  },
+  {
+    term: "Window",
+    detail:
+      "The trailing 30 days, so a ward's ranking reflects how it is working now rather than how it worked last winter.",
+  },
+  {
+    term: "Target",
+    detail:
+      "Seven days. This is the city's stated commitment, not a threshold this site invented.",
+  },
+  {
+    term: "Excluded",
+    detail:
+      "Duplicate tickets, which the city files separately when several people report the same hole.",
+  },
+];
+
 export function MethodologySection() {
   return (
-    <section className="bg-chicago-blue-tint px-6 py-28">
-      <div className="mx-auto max-w-3xl">
-        <SectionHeading numeral="02" label="From the editors" />
-        <h2 className="mt-6 font-display text-4xl tracking-tight text-ink sm:text-5xl">
-          How we built this.
-        </h2>
+    <section className="border-t border-curb px-6 py-24">
+      <div className="mx-auto max-w-6xl">
+        <SectionHeading label="How this is measured" />
 
-        <div className="mt-10 space-y-6 text-[1.05rem] leading-relaxed text-ink/85">
-          {/* Drop cap opens the lede, magazine-style. */}
-          <p className="first-letter:mr-3 first-letter:float-left first-letter:font-display first-letter:text-7xl first-letter:leading-[0.62] first-letter:font-semibold first-letter:text-chicago-red">
-            The City of Chicago publishes all 311 pothole reports as open data.
-            This site pulls a fresh copy every day, deduplicates the reports,
-            and surfaces what the city&apos;s own dashboards don&apos;t: how
-            long things actually take.
-          </p>
-          <p>
-            We measure response time per ward, distinguishing real repairs from
-            tickets the city closed without finding anything. Roughly 7% of
-            &ldquo;completed&rdquo; tickets in the last 30 days were inspections
-            that found nothing &mdash; the same number you see above.
-          </p>
-          <p>
-            The leaderboard ranks wards by what percent of their currently-open
-            tickets are past the city&apos;s stated 7-day target. We use this
-            rather than raw counts because volume is biased: wards with more
-            engaged residents report more, regardless of road condition.
-          </p>
-          <p>
-            Some specific tickets defy normal interpretation. The Lake Shore
-            Drive pothole shown above has been open in the city&apos;s system
-            for over 500 days &mdash; likely a bureaucratic limbo between
-            agencies, not literal neglect. We surface it because the city&apos;s
-            data says it&apos;s open, and the city&apos;s data is what we work
-            with.
-          </p>
+        <div className="mt-10 grid grid-cols-1 gap-x-16 gap-y-12 lg:grid-cols-[1fr_1.1fr]">
+          <div>
+            <h2 className="font-display text-[clamp(2.5rem,5.5vw,4.25rem)] leading-[0.88] tracking-tight text-paint uppercase">
+              Ranked by how
+              <br />
+              <span className="text-hazard">long you wait.</span>
+            </h2>
+            <div className="mt-8 space-y-5 text-base leading-relaxed text-paint-dim">
+              <p>
+                Wards are ranked by median time to repair, not by how many
+                potholes they report. Raw counts reward silence: a ward where
+                nobody calls 311 looks pristine, and a ward with organised
+                neighbours looks broken.
+              </p>
+              <p>
+                Percentages past the target have the opposite problem. When a
+                ward&apos;s open backlog is small, a handful of tickets swings
+                the figure wildly from one day to the next. The median is
+                harder to move by accident, and it answers the question people
+                actually ask: if I report a pothole on my street, how long
+                until someone fills it?
+              </p>
+              <p>
+                This site is not affiliated with the City of Chicago. Where the
+                city&apos;s data is strange, it is reported as-is rather than
+                cleaned up.
+              </p>
+            </div>
+
+            <Link
+              href="/methodology"
+              className="group mt-10 inline-flex items-center gap-3 border-b border-hazard/40 pb-1 font-mono text-xs tracking-[0.18em] text-hazard uppercase transition-colors hover:border-hazard focus-visible:ring-2 focus-visible:ring-ice focus-visible:outline-none"
+            >
+              Read the full methodology
+              <span
+                aria-hidden="true"
+                className="transition-transform group-hover:translate-x-1"
+              >
+                &rarr;
+              </span>
+            </Link>
+          </div>
+
+          <dl className="border-t border-curb">
+            {SPEC.map((row) => (
+              <div
+                key={row.term}
+                className="grid grid-cols-1 gap-x-8 gap-y-2 border-b border-curb py-6 sm:grid-cols-[7rem_1fr]"
+              >
+                <dt className="font-mono text-[0.65rem] tracking-[0.2em] text-hazard uppercase">
+                  {row.term}
+                </dt>
+                <dd className="text-sm leading-relaxed text-paint-dim">
+                  {row.detail}
+                </dd>
+              </div>
+            ))}
+          </dl>
         </div>
-
-        <Link
-          href="/methodology"
-          className="group mt-10 inline-flex items-center gap-2 rounded-sm font-display text-lg italic text-ink underline decoration-ink/30 underline-offset-4 transition-colors hover:text-chicago-red focus-visible:ring-2 focus-visible:ring-chicago-blue focus-visible:outline-none"
-        >
-          Read the full methodology
-          <span className="transition-transform group-hover:translate-x-1">
-            &rarr;
-          </span>
-        </Link>
       </div>
     </section>
   );

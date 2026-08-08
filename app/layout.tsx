@@ -1,30 +1,37 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Newsreader } from "next/font/google";
+import { Big_Shoulders, IBM_Plex_Mono, IBM_Plex_Sans } from "next/font/google";
 import "./globals.css";
 import { Header } from "@/components/Header";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Condensed industrial display face drawn for the City of Chicago. The optical
+// size axis is loaded so headlines can be set at the display end (see the
+// .font-display rule in globals.css) rather than scaled up from a text cut.
+const bigShoulders = Big_Shoulders({
+  variable: "--font-big-shoulders",
   subsets: ["latin"],
+  axes: ["opsz"],
+  // next/font has no metric overrides for this family, so it can't synthesise a
+  // matched fallback. Name condensed faces explicitly — swapping a very
+  // condensed display face against a normal-width fallback reflows headlines.
+  fallback: ["Arial Narrow", "Helvetica Neue", "sans-serif"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const plexSans = IBM_Plex_Sans({
+  variable: "--font-plex-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
 });
 
-// Editorial display face. Italic carries the dateline/caption voice; loaded
-// once and self-hosted by next/font (no runtime request).
-const newsreader = Newsreader({
-  variable: "--font-newsreader",
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-plex-mono",
   subsets: ["latin"],
-  style: ["normal", "italic"],
   weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
   title: "Chicago Pothole Tracker",
-  description: "Tracking every open pothole in Chicago, daily",
+  description:
+    "Chicago says it fixes a pothole in seven days. This tracks what actually happens, ward by ward, from the city's own 311 data.",
 };
 
 export default function RootLayout({
@@ -35,9 +42,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} ${newsreader.variable} antialiased`}
+      className={`${bigShoulders.variable} ${plexSans.variable} ${plexMono.variable} antialiased`}
     >
-      <body className="bg-paper text-ink">
+      <body className="bg-asphalt text-paint">
         <Header />
         {children}
       </body>

@@ -39,7 +39,7 @@ export function MapFilters({
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <label className="mb-2 block font-mono text-[0.65rem] tracking-[0.2em] text-neutral-500 uppercase">
+        <label className="mb-2 block font-mono text-[0.65rem] tracking-[0.2em] text-paint-dim uppercase">
           Ward
         </label>
         <Select
@@ -62,7 +62,7 @@ export function MapFilters({
       </div>
 
       <div>
-        <label className="mb-2 block font-mono text-[0.65rem] tracking-[0.2em] text-neutral-500 uppercase">
+        <label className="mb-2 block font-mono text-[0.65rem] tracking-[0.2em] text-paint-dim uppercase">
           Status
         </label>
         <Select

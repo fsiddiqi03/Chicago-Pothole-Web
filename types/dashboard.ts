@@ -45,6 +45,11 @@ export interface DashboardData {
   leaderboard: LeaderboardEntry[];
   /** Top 10 wards by fastest median time-to-fix, ascending. */
   fastest_leaderboard: LeaderboardEntry[];
+  /**
+   * Every ward with a median, fastest first — the homepage ward wall plots the
+   * whole distribution, not just the two tails.
+   */
+  all_wards: LeaderboardEntry[];
   /** ISO 8601 timestamp of the most recent cache refresh. */
   updated_at: string | null;
 }

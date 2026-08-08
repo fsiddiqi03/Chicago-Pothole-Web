@@ -44,35 +44,35 @@ export function MapPanelBody({
             visible restatement, so it stays out of the accessibility tree. */}
         <p
           aria-hidden="true"
-          className="font-display text-3xl leading-[1.05] tracking-tight text-ink"
+          className="font-display text-4xl leading-[0.95] tracking-tight text-paint uppercase"
         >
           {view.headline}
         </p>
         {view.subhead && (
-          <p className="mt-1.5 font-mono text-[0.65rem] tracking-[0.16em] text-neutral-500 uppercase">
+          <p className="mt-1.5 font-mono text-[0.65rem] tracking-[0.16em] text-paint-dim uppercase">
             {view.subhead}
           </p>
         )}
-        <p className="mt-2.5 text-sm leading-relaxed text-neutral-600">
+        <p className="mt-2.5 text-sm leading-relaxed text-paint-dim">
           {view.blurb}
         </p>
         <p
           aria-live="polite"
-          className="mt-4 border-t border-neutral-300 pt-3 font-mono text-xs tracking-wide text-neutral-500"
+          className="mt-4 border-t border-curb pt-3 font-mono text-xs tracking-wide text-paint-dim"
         >
           {loading ? (
             "Counting reports…"
           ) : error ? (
-            <span className="text-chicago-red">
+            <span className="text-cone">
               Couldn&apos;t load reports. Retry from the message above the map.
             </span>
           ) : isEmpty ? (
-            <span className="text-chicago-red">
+            <span className="text-cone">
               No reports match these filters. Try another ward or status.
             </span>
           ) : (
             <>
-              <span className="font-semibold text-ink">
+              <span className="font-semibold text-paint">
                 {visibleCount.toLocaleString("en-US")}
               </span>{" "}
               visible on the map
@@ -89,15 +89,15 @@ export function MapPanelBody({
         onWardChange={onWardChange}
       />
 
-      <div className="border-t border-neutral-300 pt-4">
+      <div className="border-t border-curb pt-4">
         <ul className="space-y-1.5">
           {legendEntries(status).map((entry) => (
             <li
               key={entry.label}
-              className="flex items-center gap-2.5 text-xs text-neutral-600"
+              className="flex items-center gap-2.5 text-xs text-paint-dim"
             >
               <span
-                className="size-2.5 shrink-0 rounded-full ring-1 ring-black/5"
+                className="size-2.5 shrink-0 rounded-full ring-1 ring-white/10"
                 style={{ backgroundColor: entry.color }}
               />
               {entry.label}

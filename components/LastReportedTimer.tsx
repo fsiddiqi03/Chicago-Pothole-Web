@@ -4,20 +4,32 @@ import { useEffect, useRef, useState } from "react";
 
 import { elapsedBetween, pad2, describeSinceReport } from "@/lib/format";
 
+const TONES = {
+  cone: "text-cone",
+  hazard: "text-hazard",
+  ice: "text-ice",
+  paint: "text-paint",
+} as const;
+
 interface LastReportedTimerProps {
-  /** ISO 8601 timestamp the most recent open pothole was reported. */
+  /** ISO 8601 timestamp the report was created. */
   createdAt: string;
   /** Server-captured epoch ms, used for the first render so SSR and the first
    *  client render agree and React doesn't warn about a hydration mismatch. */
   now: number;
+  tone?: keyof typeof TONES;
 }
 
 /**
- * Live "how long ago" timer for the most recent report. Reads as
- * days / hours / minutes / seconds; the day segment is dropped entirely when
- * the gap is under 24 hours so it doesn't show a redundant "0d".
+ * Live "how long ago" counter, as days / hours / minutes / seconds. The day
+ * segment is dropped entirely when the gap is under 24 hours so it doesn't show
+ * a redundant "0d".
  */
-export function LastReportedTimer({ createdAt, now }: LastReportedTimerProps) {
+export function LastReportedTimer({
+  createdAt,
+  now,
+  tone = "hazard",
+}: LastReportedTimerProps) {
   const createdMs = new Date(createdAt).getTime();
 
   const [elapsed, setElapsed] = useState(() => elapsedBetween(createdMs, now));
@@ -61,27 +73,26 @@ export function LastReportedTimer({ createdAt, now }: LastReportedTimerProps) {
     };
   }, [createdMs]);
 
+  const accent = TONES[tone];
+
   return (
     <p
       role="timer"
       aria-label={label}
-      className="font-mono text-2xl tracking-wide tabular-nums sm:text-3xl"
+      className="font-mono text-3xl tracking-tight tabular-nums sm:text-4xl"
     >
       {elapsed.days > 0 && (
         <>
-          <span className="text-chicago-red">{elapsed.days}</span>
-          <span className="text-neutral-400">d</span>{" "}
+          <span className={accent}>{elapsed.days}</span>
+          <span className="text-paint-dim/60">d</span>{" "}
         </>
       )}
-      <span className="text-chicago-red">{pad2(elapsed.hours)}</span>
-      <span className="text-neutral-400">h</span>{" "}
-      <span className="text-chicago-red">{pad2(elapsed.minutes)}</span>
-      <span className="text-neutral-400">m</span>{" "}
-      <span className="text-chicago-red">{pad2(elapsed.seconds)}</span>
-      <span className="text-neutral-400">s</span>{" "}
-      <span className="ml-1 font-sans text-base tracking-normal text-neutral-500 normal-case">
-        ago
-      </span>
+      <span className={accent}>{pad2(elapsed.hours)}</span>
+      <span className="text-paint-dim/60">h</span>{" "}
+      <span className={accent}>{pad2(elapsed.minutes)}</span>
+      <span className="text-paint-dim/60">m</span>{" "}
+      <span className={accent}>{pad2(elapsed.seconds)}</span>
+      <span className="text-paint-dim/60">s</span>
     </p>
   );
 }
